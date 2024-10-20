@@ -300,4 +300,6 @@
     <string name="analogscroll_none">None (both sticks move the mouse)</string>
     <string name="analogscroll_right">Right analog stick</string>
     <string name="analogscroll_left">Left analog stick</string>
+    <string name="unmute">Start mic</string>
+    <string name="mute">stop mic</string>
 </resources>

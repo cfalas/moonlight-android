@@ -1,42 +1,7 @@
 package com.limelight;
 
 
-import com.limelight.binding.PlatformBinding;
-import com.limelight.binding.audio.AndroidAudioRenderer;
-import com.limelight.binding.input.ControllerHandler;
-import com.limelight.binding.input.KeyboardTranslator;
-import com.limelight.binding.input.capture.InputCaptureManager;
-import com.limelight.binding.input.capture.InputCaptureProvider;
-import com.limelight.binding.input.touch.AbsoluteTouchContext;
-import com.limelight.binding.input.touch.RelativeTouchContext;
-import com.limelight.binding.input.driver.UsbDriverService;
-import com.limelight.binding.input.evdev.EvdevListener;
-import com.limelight.binding.input.touch.TouchContext;
-import com.limelight.binding.input.virtual_controller.VirtualController;
-import com.limelight.binding.video.CrashListener;
-import com.limelight.binding.video.MediaCodecDecoderRenderer;
-import com.limelight.binding.video.MediaCodecHelper;
-import com.limelight.binding.video.PerfOverlayListener;
-import com.limelight.nvstream.NvConnection;
-import com.limelight.nvstream.NvConnectionListener;
-import com.limelight.nvstream.StreamConfiguration;
-import com.limelight.nvstream.http.ComputerDetails;
-import com.limelight.nvstream.http.NvApp;
-import com.limelight.nvstream.http.NvHTTP;
-import com.limelight.nvstream.input.ControllerPacket;
-import com.limelight.nvstream.input.KeyboardPacket;
-import com.limelight.nvstream.input.MouseButtonPacket;
-import com.limelight.nvstream.jni.MoonBridge;
-import com.limelight.preferences.GlPreferences;
-import com.limelight.preferences.PreferenceConfiguration;
-import com.limelight.ui.GameGestures;
-import com.limelight.ui.StreamView;
-import com.limelight.utils.Dialog;
-import com.limelight.utils.ServerHelper;
-import com.limelight.utils.ShortcutHelper;
-import com.limelight.utils.SpinnerDialog;
-import com.limelight.utils.UiHelper;
-
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
@@ -53,7 +18,10 @@ import android.content.res.Configuration;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.hardware.input.InputManager;
+import android.media.AudioFormat;
 import android.media.AudioManager;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
 import android.net.ConnectivityManager;
 import android.net.wifi.WifiManager;
 import android.os.Build;
@@ -74,24 +42,72 @@ import android.view.View.OnSystemUiVisibilityChangeListener;
 import android.view.View.OnTouchListener;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.FrameLayout;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.limelight.binding.PlatformBinding;
+import com.limelight.binding.audio.AndroidAudioRenderer;
+import com.limelight.binding.input.ControllerHandler;
+import com.limelight.binding.input.KeyboardTranslator;
+import com.limelight.binding.input.capture.InputCaptureManager;
+import com.limelight.binding.input.capture.InputCaptureProvider;
+import com.limelight.binding.input.driver.UsbDriverService;
+import com.limelight.binding.input.evdev.EvdevListener;
+import com.limelight.binding.input.touch.AbsoluteTouchContext;
+import com.limelight.binding.input.touch.RelativeTouchContext;
+import com.limelight.binding.input.touch.TouchContext;
+import com.limelight.binding.input.virtual_controller.VirtualController;
+import com.limelight.binding.video.CrashListener;
+import com.limelight.binding.video.MediaCodecDecoderRenderer;
+import com.limelight.binding.video.MediaCodecHelper;
+import com.limelight.binding.video.PerfOverlayListener;
+import com.limelight.nvstream.NvConnection;
+import com.limelight.nvstream.NvConnectionListener;
+import com.limelight.nvstream.StreamConfiguration;
+import com.limelight.nvstream.http.ComputerDetails;
+import com.limelight.nvstream.http.NvApp;
+import com.limelight.nvstream.http.NvHTTP;
+import com.limelight.nvstream.input.KeyboardPacket;
+import com.limelight.nvstream.input.MouseButtonPacket;
+import com.limelight.nvstream.jni.MoonBridge;
+import com.limelight.preferences.GlPreferences;
+import com.limelight.preferences.PreferenceConfiguration;
+import com.limelight.ui.GameGestures;
+import com.limelight.ui.StreamView;
+import com.limelight.utils.Dialog;
+import com.limelight.utils.ServerHelper;
+import com.limelight.utils.ShortcutHelper;
+import com.limelight.utils.SpinnerDialog;
+import com.limelight.utils.UiHelper;
+import com.limelight.utils.Vector2d;
+
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
 
 
-public class Game extends Activity implements SurfaceHolder.Callback,
+public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         OnGenericMotionListener, OnTouchListener, NvConnectionListener, EvdevListener,
         OnSystemUiVisibilityChangeListener, GameGestures, StreamView.InputCallbacks,
         PerfOverlayListener, UsbDriverService.UsbDriverStateListener, View.OnKeyListener {
+    private static final int MIC_SAMPLE_RATE = 16000;
+    private static final int MIC_BUFFER_SIZE = 4000;
     private int lastButtonState = 0;
 
     // Only 2 touches are supported
@@ -142,6 +158,12 @@ public class Game extends Activity implements SurfaceHolder.Callback,
     private float lastAbsTouchUpX, lastAbsTouchUpY;
     private float lastAbsTouchDownX, lastAbsTouchDownY;
 
+    private Thread recordingThread;
+
+    private boolean isRecording = false;
+
+    private Vector2d lastAbs = Vector2d.ZERO;
+
     private boolean isHidingOverlays;
     private TextView notificationOverlayView;
     private int requestedNotificationOverlayVisibility = View.GONE;
@@ -180,12 +202,15 @@ public class Game extends Activity implements SurfaceHolder.Callback,
     public static final String EXTRA_PC_NAME = "PcName";
     public static final String EXTRA_APP_HDR = "HDR";
     public static final String EXTRA_SERVER_CERT = "ServerCert";
+    private ExecutorService cameraExecutor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         UiHelper.setLocale(this);
+
+        setTheme(androidx.appcompat.R.style.Theme_AppCompat_DayNight_NoActionBar);
 
         // We don't want a title bar
         requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -228,8 +253,7 @@ public class Game extends Activity implements SurfaceHolder.Callback,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 getWindow().getAttributes().layoutInDisplayCutoutMode =
                         WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
-            }
-            else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 getWindow().getAttributes().layoutInDisplayCutoutMode =
                         WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
             }
@@ -533,6 +557,92 @@ public class Game extends Activity implements SurfaceHolder.Callback,
 
         // The connection will be started when the surface gets created
         streamView.getHolder().addCallback(this);
+
+        recordingThread = new Thread(() -> {
+            DatagramSocket socket = null;
+            try {
+                socket = new DatagramSocket();
+            } catch (SocketException e) {
+                throw new RuntimeException(e);
+            }
+
+            byte[] buffer = new byte[MIC_BUFFER_SIZE];
+            LimeLog.info("MIC: Created socket");
+
+            var recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION, MIC_SAMPLE_RATE, AudioFormat.CHANNEL_IN_DEFAULT, AudioFormat.ENCODING_PCM_16BIT, MIC_BUFFER_SIZE);
+
+            InetAddress serverAddress;
+            try {
+                serverAddress = InetAddress.getByName(host);
+            } catch (UnknownHostException e) {
+                throw new RuntimeException(e);
+            }
+            recorder.startRecording();
+            while (isRecording) {
+                int read = recorder.read(buffer, 0, buffer.length);
+                var packet = new DatagramPacket(buffer, read, serverAddress, 50005);
+                try {
+                    socket.send(packet);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            recorder.stop();
+
+            socket.close();
+        });
+
+
+
+
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 1);
+            }
+            if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.CAMERA}, 1);
+            }
+        }
+
+        var muteButton = (Button)findViewById(R.id.mic_button);
+        muteButton.setOnClickListener(view -> {
+            if (isRecording) {
+                isRecording = false;
+                muteButton.setText(R.string.unmute);
+            } else {
+                isRecording = true;
+                recordingThread.start();
+                muteButton.setText(R.string.mute);
+            }
+        });
+
+        CameraProcessor cameraProcessor;
+        try {
+            cameraProcessor = new CameraProcessor(this, host);
+        } catch (SocketException e) {
+            throw new RuntimeException(e);
+        }
+
+        var cameraButton = (Button)findViewById(R.id.camera_button);
+        cameraButton.setOnClickListener(view -> {
+            if (cameraProcessor.isBound()) {
+                cameraProcessor.unbind();
+                cameraButton.setText("start cam");
+            } else {
+                cameraProcessor.bind(this);
+                cameraButton.setText("stop cam");
+            }
+        });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            isRecording = true;
+            recordingThread.start();
+        }
     }
 
     private void setPreferredOrientationForCurrentDisplay() {
@@ -1055,9 +1165,13 @@ public class Game extends Activity implements SurfaceHolder.Callback,
 
     @Override
     protected void onPause() {
+        LimeLog.info("in onPause");
+        isRecording = false;
         if (isFinishing()) {
+            LimeLog.info("in onPause, finishing");
             // Stop any further input device notifications before we lose focus (and pointer capture)
             if (controllerHandler != null) {
+                LimeLog.info("in onPause, finishing, non-null controller");
                 controllerHandler.stop();
             }
 
