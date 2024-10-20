@@ -1181,6 +1181,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     @Override
     protected void onStop() {
+        LimeLog.info("in onStop");
         super.onStop();
 
         SpinnerDialog.closeDialogs(this);
@@ -1666,6 +1667,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     private static float getPressureOrDistance(MotionEvent event, int pointerIndex) {
         InputDevice dev = event.getDevice();
+        LimeLog.info(dev.getMotionRange(MotionEvent.AXIS_X).getFuzz() + "x" + dev.getMotionRange(MotionEvent.AXIS_Y).getFuzz());
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_HOVER_ENTER:
             case MotionEvent.ACTION_HOVER_MOVE:
@@ -1773,6 +1775,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         float[] normalizedCoords = getStreamViewRelativeNormalizedXY(view, event, pointerIndex);
         float[] normalizedContactArea = getStreamViewNormalizedContactArea(event, pointerIndex);
+        LimeLog.info("sending pen event type " + eventType + " with buttons " + penButtons + " at coordinates " + normalizedCoords[0] + ", " + normalizedCoords[1] + " at angle " + tiltDegrees);
         return conn.sendPenEvent(eventType, toolType, penButtons,
                 normalizedCoords[0], normalizedCoords[1],
                 getPressureOrDistance(event, pointerIndex),
@@ -1850,6 +1853,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     private boolean trySendTouchEvent(View view, MotionEvent event) {
+        LimeLog.info("trying to send touch event");
         byte eventType = getLiTouchTypeFromEvent(event);
         if (eventType < 0) {
             return false;
@@ -2157,6 +2161,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 if (!prefConfig.touchscreenTrackpad && trySendTouchEvent(view, event)) {
                     // If this host supports touch events and absolute touch is enabled,
                     // send it directly as a touch event.
+                    LimeLog.info("sent direct touch event");
                     return true;
                 }
 
@@ -2308,6 +2313,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 case MotionEvent.ACTION_HOVER_ENTER:
                 case MotionEvent.ACTION_HOVER_EXIT:
                 case MotionEvent.ACTION_HOVER_MOVE:
+                    LimeLog.info("Got ACTION_DOWN/HOVER_ENTER/HOVER_EXIT/HOVER_MOVE");
                     if (event.getEventTime() - lastAbsTouchUpTime <= STYLUS_UP_DEAD_ZONE_DELAY &&
                             Math.sqrt(Math.pow(eventX - lastAbsTouchUpX, 2) + Math.pow(eventY - lastAbsTouchUpY, 2)) <= STYLUS_UP_DEAD_ZONE_RADIUS) {
                         // Enforce a small deadzone between touch up and hover or touch down to allow more precise double-clicking
@@ -2317,6 +2323,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
                 case MotionEvent.ACTION_MOVE:
                 case MotionEvent.ACTION_UP:
+                    LimeLog.info("Got ACTION_MOVE/ACTION_UP");
                     if (event.getEventTime() - lastAbsTouchDownTime <= STYLUS_DOWN_DEAD_ZONE_DELAY &&
                             Math.sqrt(Math.pow(eventX - lastAbsTouchDownX, 2) + Math.pow(eventY - lastAbsTouchDownY, 2)) <= STYLUS_DOWN_DEAD_ZONE_RADIUS) {
                         // Enforce a small deadzone between touch down and move or touch up to allow more precise double-clicking
