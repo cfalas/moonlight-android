@@ -276,17 +276,17 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             // artificially increasing input latency while streaming.
             streamView.requestUnbufferedDispatch(
                     InputDevice.SOURCE_CLASS_BUTTON | // Keyboards
-                    InputDevice.SOURCE_CLASS_JOYSTICK | // Gamepads
-                    InputDevice.SOURCE_CLASS_POINTER | // Touchscreens and mice (w/o pointer capture)
-                    InputDevice.SOURCE_CLASS_POSITION | // Touchpads
-                    InputDevice.SOURCE_CLASS_TRACKBALL // Mice (pointer capture)
+                            InputDevice.SOURCE_CLASS_JOYSTICK | // Gamepads
+                            InputDevice.SOURCE_CLASS_POINTER | // Touchscreens and mice (w/o pointer capture)
+                            InputDevice.SOURCE_CLASS_POSITION | // Touchpads
+                            InputDevice.SOURCE_CLASS_TRACKBALL // Mice (pointer capture)
             );
             backgroundTouchView.requestUnbufferedDispatch(
                     InputDevice.SOURCE_CLASS_BUTTON | // Keyboards
-                    InputDevice.SOURCE_CLASS_JOYSTICK | // Gamepads
-                    InputDevice.SOURCE_CLASS_POINTER | // Touchscreens and mice (w/o pointer capture)
-                    InputDevice.SOURCE_CLASS_POSITION | // Touchpads
-                    InputDevice.SOURCE_CLASS_TRACKBALL // Mice (pointer capture)
+                            InputDevice.SOURCE_CLASS_JOYSTICK | // Gamepads
+                            InputDevice.SOURCE_CLASS_POINTER | // Touchscreens and mice (w/o pointer capture)
+                            InputDevice.SOURCE_CLASS_POSITION | // Touchpads
+                            InputDevice.SOURCE_CLASS_TRACKBALL // Mice (pointer capture)
             );
         }
 
@@ -384,8 +384,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                     // Nope, no HDR for us :(
                     Toast.makeText(this, "Display does not support HDR10", Toast.LENGTH_LONG).show();
                 }
-            }
-            else {
+            } else {
                 Toast.makeText(this, "HDR requires Android 7.0 or later", Toast.LENGTH_LONG).show();
             }
         }
@@ -460,7 +459,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         // Set to the optimal mode for streaming
         float displayRefreshRate = prepareDisplayForRendering();
-        LimeLog.info("Display refresh rate: "+displayRefreshRate);
+        LimeLog.info("Display refresh rate: " + displayRefreshRate);
 
         // If the user requested frame pacing using a capped FPS, we will need to change our
         // desired FPS setting here in accordance with the active display refresh rate.
@@ -476,8 +475,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                     // Let's avoid clearly bogus refresh rates and fall back to legacy rendering
                     prefConfig.framePacing = PreferenceConfiguration.FRAME_PACING_BALANCED;
                     LimeLog.info("Bogus refresh rate: " + roundedRefreshRate);
-                }
-                else {
+                } else {
                     chosenFrameRate = roundedRefreshRate - 1;
                     LimeLog.info("Adjusting FPS target for screen to " + chosenFrameRate);
                 }
@@ -496,7 +494,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 .setRemoteConfiguration(StreamConfiguration.STREAM_CFG_AUTO) // NvConnection will perform LAN and VPN detection
                 .setSupportedVideoFormats(supportedVideoFormats)
                 .setAttachedGamepadMask(gamepadMask)
-                .setClientRefreshRateX100((int)(displayRefreshRate * 100))
+                .setClientRefreshRateX100((int) (displayRefreshRate * 100))
                 .setAudioConfiguration(prefConfig.audioConfiguration)
                 .setColorSpace(decoderRenderer.getPreferredColorSpace())
                 .setColorRange(decoderRenderer.getPreferredColorRange())
@@ -518,8 +516,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         for (int i = 0; i < touchContextMap.length; i++) {
             if (!prefConfig.touchscreenTrackpad) {
                 touchContextMap[i] = new AbsoluteTouchContext(conn, i, streamView);
-            }
-            else {
+            } else {
                 touchContextMap[i] = new RelativeTouchContext(conn, i,
                         REFERENCE_HORIZ_RES, REFERENCE_VERT_RES,
                         streamView, prefConfig);
@@ -529,7 +526,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         if (prefConfig.onscreenController) {
             // create virtual onscreen controller
             virtualController = new VirtualController(controllerHandler,
-                    (FrameLayout)streamView.getParent(),
+                    (FrameLayout) streamView.getParent(),
                     this);
             virtualController.refreshLayout();
             virtualController.show();
@@ -1973,13 +1970,13 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
                             // Touchpads must be smaller than (65535, 65535)
                             if (xMax <= Short.MAX_VALUE && yMax <= Short.MAX_VALUE) {
-                                conn.sendMousePosition((short)event.getX(), (short)event.getY(),
-                                                       (short)xMax, (short)yMax);
+                                conn.sendMousePosition((short) event.getX(), (short) event.getY(),
+                                        (short) xMax, (short) yMax);
                             }
                         }
                     }
                 }
-                else if (view != null && trySendPenEvent(view, event)) {
+                else if (view != null && trySendPenEvent(view, event) && event.getPointerCount() == 1) {
                     // If our host supports pen events, send it directly
                     return true;
                 }
