@@ -1831,6 +1831,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 // Not a stylus event
                 return false;
             }
+
+            if(eventType == MoonBridge.LI_TOUCH_EVENT_HOVER_LEAVE){
+                return false;
+            }
             return sendPenEventForPointer(view, event, eventType, toolType, event.getActionIndex());
         }
     }
@@ -1906,15 +1910,23 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             {
                 int buttonState = event.getButtonState();
                 int changedButtons = buttonState ^ lastButtonState;
+                boolean isScrolling = false;
 
                 // The DeX touchpad on the Fold 4 sends proper right click events using BUTTON_SECONDARY,
                 // but doesn't send BUTTON_PRIMARY for a regular click. Instead it sends ACTION_DOWN/UP,
                 // so we need to fix that up to look like a sane input event to process it correctly.
                 if (eventSource == 12290) {
-                    if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                    if(event.getActionMasked() != MotionEvent.ACTION_HOVER_MOVE)
+                        LimeLog.info("got mouse event from dex of action " + event.getActionMasked() + " with state" + event.getButtonState());
+
+                    isScrolling = (event.getAction() == MotionEvent.ACTION_MOVE && event.getButtonState() == 0);
+
+                    if (event.getActionMasked() == MotionEvent.ACTION_DOWN && event.getButtonState() == MotionEvent.BUTTON_PRIMARY) {
+                        LimeLog.info("got ACTION_DOWN from dex");
                         buttonState |= MotionEvent.BUTTON_PRIMARY;
                     }
                     else if (event.getAction() == MotionEvent.ACTION_UP) {
+                        LimeLog.info("got ACTION_UP from dex");
                         buttonState &= ~MotionEvent.BUTTON_PRIMARY;
                     }
                     else {
@@ -1936,7 +1948,15 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 // Always update the position before sending any button events. If we're
                 // dealing with a stylus without hover support, our position might be
                 // significantly different than before.
-                if (inputCaptureProvider.eventHasRelativeMouseAxes(event)) {
+                if(isScrolling && event.getPointerCount() == 2){
+                    for (int i = 0;i < event.getPointerCount(); i++) {
+                        MotionEvent.PointerCoords current_coords = new MotionEvent.PointerCoords();
+                        event.getPointerCoords(i, current_coords);
+                        LimeLog.info(String.format("Event %d: Pointer %d: %f %f", getLiTouchTypeFromEvent(event), i, current_coords.x, current_coords.y));
+                        trySendTouchEvent(view, event);
+                    }
+                }
+                if (inputCaptureProvider.eventHasRelativeMouseAxes(event) && !isScrolling) {
                     // Send the deltas straight from the motion event
                     short deltaX = (short)inputCaptureProvider.getRelativeAxisX(event);
                     short deltaY = (short)inputCaptureProvider.getRelativeAxisY(event);
@@ -1952,7 +1972,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                         }
                     }
                 }
-                else if ((eventSource & InputDevice.SOURCE_CLASS_POSITION) != 0) {
+                else if ((eventSource & InputDevice.SOURCE_CLASS_POSITION) != 0 && !isScrolling) {
                     // If this input device is not associated with the view itself (like a trackpad),
                     // we'll convert the device-specific coordinates to use to send the cursor position.
                     // This really isn't ideal but it's probably better than nothing.
@@ -2002,9 +2022,19 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                     }
                 }
 
+                if(isScrolling && event.getPointerCount() == 1){
+                    LimeLog.info("There are " + event.getPointerCount() + " pointers");
+                    Vector2d new_pos = getMousePosition(view, event);
+                    float deltaX = new_pos.getX() - lastAbs.getX();
+                    float deltaY = new_pos.getY() - lastAbs.getY();
+                    conn.sendMouseHighResHScroll((short)-deltaX);
+                    conn.sendMouseHighResScroll((short)deltaY);
+                }
+                lastAbs = getMousePosition(view, event);
+
                 // Mouse secondary or stylus primary is right click (stylus down is left click)
-                if ((changedButtons & (MotionEvent.BUTTON_SECONDARY | MotionEvent.BUTTON_STYLUS_PRIMARY)) != 0) {
-                    if ((buttonState & (MotionEvent.BUTTON_SECONDARY | MotionEvent.BUTTON_STYLUS_PRIMARY)) != 0) {
+                if ((changedButtons & (MotionEvent.BUTTON_SECONDARY)) != 0) {
+                    if ((buttonState & (MotionEvent.BUTTON_SECONDARY)) != 0) {
                         conn.sendMouseButtonDown(MouseButtonPacket.BUTTON_RIGHT);
                     }
                     else {
@@ -2225,6 +2255,32 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     public boolean onGenericMotionEvent(MotionEvent event) {
         return handleMotionEvent(null, event) || super.onGenericMotionEvent(event);
 
+    }
+    private Vector2d getMousePosition(View touchedView, MotionEvent event) {
+        // X and Y are already relative to the provided view object
+        float eventX, eventY;
+
+        // For our StreamView itself, we can use the coordinates unmodified.
+        if (touchedView == streamView) {
+            eventX = event.getX(0);
+            eventY = event.getY(0);
+        }
+        else {
+            // For the containing background view, we must subtract the origin
+            // of the StreamView to get video-relative coordinates.
+            eventX = event.getX(0) - streamView.getX();
+            eventY = event.getY(0) - streamView.getY();
+        }
+
+        // We may get values slightly outside our view region on ACTION_HOVER_ENTER and ACTION_HOVER_EXIT.
+        // Normalize these to the view size. We can't just drop them because we won't always get an event
+        // right at the boundary of the view, so dropping them would result in our cursor never really
+        // reaching the sides of the screen.
+        eventX = Math.min(Math.max(eventX, 0), streamView.getWidth());
+        eventY = Math.min(Math.max(eventY, 0), streamView.getHeight());
+        Vector2d pos = new Vector2d();
+        pos.initialize(eventX, eventY);
+        return pos;
     }
 
     private void updateMousePosition(View touchedView, MotionEvent event) {
