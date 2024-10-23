@@ -53,6 +53,17 @@ Java_com_limelight_nvstream_jni_MoonBridge_sendTouchEvent(JNIEnv *env, jclass cl
 }
 
 JNIEXPORT jint JNICALL
+Java_com_limelight_nvstream_jni_MoonBridge_sendTrackpadEvent(JNIEnv *env, jclass clazz,
+                                                          jbyte eventType, jint pointerId,
+                                                          jfloat x, jfloat y, jfloat pressureOrDistance,
+                                                          jfloat contactAreaMajor, jfloat contactAreaMinor,
+                                                          jshort rotation) {
+    return LiSendTrackpadEvent(eventType, pointerId, x, y, pressureOrDistance,
+                            contactAreaMajor, contactAreaMinor, rotation);
+}
+
+
+JNIEXPORT jint JNICALL
 Java_com_limelight_nvstream_jni_MoonBridge_sendPenEvent(JNIEnv *env, jclass clazz, jbyte eventType,
                                                         jbyte toolType, jbyte penButtons,
                                                         jfloat x, jfloat y, jfloat pressureOrDistance,

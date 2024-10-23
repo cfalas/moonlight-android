@@ -550,6 +550,17 @@ public class NvConnection {
         }
     }
 
+    public int sendTrackpadEvent(byte eventType, int pointerId, float x, float y, float pressureOrDistance,
+                              float contactAreaMajor, float contactAreaMinor, short rotation) {
+        if (!isMonkey) {
+            return MoonBridge.sendTrackpadEvent(eventType, pointerId, x, y, pressureOrDistance,
+                    contactAreaMajor, contactAreaMinor, rotation);
+        }
+        else {
+            return MoonBridge.LI_ERR_UNSUPPORTED;
+        }
+    }
+
     public int sendControllerArrivalEvent(byte controllerNumber, short activeGamepadMask, byte type,
                                           int supportedButtonFlags, short capabilities) {
         return MoonBridge.sendControllerArrivalEvent(controllerNumber, activeGamepadMask, type, supportedButtonFlags, capabilities);

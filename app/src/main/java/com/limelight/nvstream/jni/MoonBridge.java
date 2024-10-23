@@ -87,6 +87,14 @@ public class MoonBridge {
     public static final byte LI_TOUCH_EVENT_HOVER_LEAVE = 0x06;
     public static final byte LI_TOUCH_EVENT_CANCEL_ALL  = 0x07;
 
+    public static final byte LI_TRACKPAD_EVENT_DOWN        = 0x00;
+    public static final byte LI_TRACKPAD_EVENT_UP          = 0x01;
+    public static final byte LI_TRACKPAD_EVENT_MOVE        = 0x02;
+    public static final byte LI_TRACKPAD_EVENT_CANCEL      = 0x03;
+    public static final byte LI_TRACKPAD_EVENT_BUTTON_ONLY = 0x04;
+    public static final byte LI_TRACKPAD_EVENT_CANCEL_ALL  = 0x05;
+
+
     public static final byte LI_TOOL_TYPE_UNKNOWN = 0x00;
     public static final byte LI_TOOL_TYPE_PEN = 0x01;
     public static final byte LI_TOOL_TYPE_ERASER = 0x02;
@@ -367,6 +375,9 @@ public class MoonBridge {
                                     short rightStickX, short rightStickY);
 
     public static native int sendTouchEvent(byte eventType, int pointerId, float x, float y, float pressure,
+                                            float contactAreaMajor, float contactAreaMinor, short rotation);
+
+    public static native int sendTrackpadEvent(byte eventType, int pointerId, float x, float y, float pressure,
                                             float contactAreaMajor, float contactAreaMinor, short rotation);
 
     public static native int sendPenEvent(byte eventType, byte toolType, byte penButtons, float x, float y,
