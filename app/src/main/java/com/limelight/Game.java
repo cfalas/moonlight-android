@@ -1912,6 +1912,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                                     event.getToolType(0) == MotionEvent.TOOL_TYPE_ERASER)) ||
                     eventSource == 12290) // 12290 = Samsung DeX mode desktop mouse
             {
+                LimeLog.info("classified as mouse/stylus");
                 int buttonState = event.getButtonState();
                 int changedButtons = buttonState ^ lastButtonState;
                 boolean isScrolling = false;
@@ -1920,6 +1921,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 // but doesn't send BUTTON_PRIMARY for a regular click. Instead it sends ACTION_DOWN/UP,
                 // so we need to fix that up to look like a sane input event to process it correctly.
                 if (eventSource == 12290) {
+                    LimeLog.info("In dex case");
                     if(event.getActionMasked() != MotionEvent.ACTION_HOVER_MOVE)
                         LimeLog.info("got mouse event from dex of action " + event.getActionMasked() + " with state" + event.getButtonState());
 
@@ -1946,6 +1948,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 if (!inputCaptureProvider.isCapturingActive()) {
                     // We return true here because otherwise the events may end up causing
                     // Android to synthesize d-pad events.
+                    LimeLog.info("ignoring mouse event");
                     return true;
                 }
 
@@ -1953,6 +1956,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 // dealing with a stylus without hover support, our position might be
                 // significantly different than before.
                 if(isScrolling && event.getPointerCount() == 2){
+                    LimeLog.info("scrolling?");
                     for (int i = 0;i < event.getPointerCount(); i++) {
                         MotionEvent.PointerCoords current_coords = new MotionEvent.PointerCoords();
                         event.getPointerCoords(i, current_coords);
@@ -1964,6 +1968,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                     // Send the deltas straight from the motion event
                     short deltaX = (short)inputCaptureProvider.getRelativeAxisX(event);
                     short deltaY = (short)inputCaptureProvider.getRelativeAxisY(event);
+                    LimeLog.info("relative event: " + event);
+                    LimeLog.info("relative mouse " + deltaX + " - " + deltaY);
 
                     if (deltaX != 0 || deltaY != 0) {
                         if (prefConfig.absoluteMouseMode) {
@@ -1984,6 +1990,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                     // Trackpad on newer versions of Android (Oreo and later) should be caught by the
                     // relative axes case above. If we get here, we're on an older version that doesn't
                     // support pointer capture.
+                    LimeLog.info("in trackpad case");
                     InputDevice device = event.getDevice();
                     if (device != null) {
                         InputDevice.MotionRange xRange = device.getMotionRange(MotionEvent.AXIS_X, eventSource);
