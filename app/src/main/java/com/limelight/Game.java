@@ -1639,20 +1639,20 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
             case MotionEvent.ACTION_POINTER_DOWN:
-                return MoonBridge.LI_TRACKPAD_EVENT_DOWN;
+                return MoonBridge.LI_TRACKPAD_EVENT_FINGER_DOWN;
 
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_POINTER_UP:
                 if ((event.getFlags() & MotionEvent.FLAG_CANCELED) != 0) {
-                    return MoonBridge.LI_TRACKPAD_EVENT_CANCEL;
+                    return MoonBridge.LI_TRACKPAD_EVENT_CANCEL_ALL;
                 }
                 else {
-                    return MoonBridge.LI_TRACKPAD_EVENT_UP;
+                    return MoonBridge.LI_TRACKPAD_EVENT_FINGER_UP;
                 }
 
             case MotionEvent.ACTION_MOVE:
             case MotionEvent.ACTION_HOVER_MOVE:
-                return MoonBridge.LI_TRACKPAD_EVENT_MOVE;
+                return MoonBridge.LI_TRACKPAD_EVENT_FINGER_MOVE;
 
             case MotionEvent.ACTION_CANCEL:
                 // ACTION_CANCEL applies to *all* pointers in the gesture, so it maps to CANCEL_ALL
@@ -1662,8 +1662,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 return MoonBridge.LI_TRACKPAD_EVENT_CANCEL_ALL;
 
             case MotionEvent.ACTION_BUTTON_PRESS:
+                return MoonBridge.LI_TRACKPAD_EVENT_BUTTON_DOWN;
             case MotionEvent.ACTION_BUTTON_RELEASE:
-                return MoonBridge.LI_TRACKPAD_EVENT_BUTTON_ONLY;
+                return MoonBridge.LI_TRACKPAD_EVENT_BUTTON_UP;
 
             default:
                 LimeLog.warning("Couldn't find trackpad event type for action "+event.getActionMasked());
@@ -1884,10 +1885,12 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     private boolean sendTrackpadEventForPointer(View view, MotionEvent event, byte eventType, int pointerIndex) {
-        float[] normalizedCoords = getStreamViewRelativeNormalizedXY(view, event, pointerIndex);
+        InputDevice device = event.getDevice();
+        float x = (1 - normalizeValueInRange(event.getX(), device.getMotionRange(MotionEvent.AXIS_X)));
+        float y = normalizeValueInRange(event.getY(), device.getMotionRange(MotionEvent.AXIS_Y));
         float[] normalizedContactArea = getStreamViewNormalizedContactArea(event, pointerIndex);
         return conn.sendTrackpadEvent(eventType, event.getPointerId(pointerIndex),
-                normalizedCoords[0], normalizedCoords[1],
+                y, x,
                 getPressureOrDistance(event, pointerIndex),
                 normalizedContactArea[0], normalizedContactArea[1],
                 getRotationDegrees(event, pointerIndex)) != MoonBridge.LI_ERR_UNSUPPORTED;
@@ -1923,7 +1926,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     private boolean trySendTrackpadEvent(View view, MotionEvent event) {
         byte eventType = getLiTrackpadTypeFromEvent(event);
-        LimeLog.info("Trackpad event of type " + MotionEvent.actionToString(event.getActionMasked()) + "->" + String.valueOf(eventType));
+        LimeLog.info("Trackpad event of type " + MotionEvent.actionToString(event.getActionMasked()) + "->" + eventType + " with " + event.getPointerCount() + " fingers");
         if (eventType < 0) {
             return false;
         }
@@ -1971,7 +1974,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                  (eventSource & InputDevice.SOURCE_CLASS_POSITION) != 0 ||
                  eventSource == InputDevice.SOURCE_MOUSE_RELATIVE)
         {
-            if (eventSource == 12290) {
+            if ((eventSource & InputDevice.SOURCE_CLASS_POSITION) != 0) {
                 return trySendTrackpadEvent(view, event);
             }
             // This case is for mice and non-finger touch devices

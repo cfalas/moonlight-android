@@ -87,11 +87,11 @@ public class MoonBridge {
     public static final byte LI_TOUCH_EVENT_HOVER_LEAVE = 0x06;
     public static final byte LI_TOUCH_EVENT_CANCEL_ALL  = 0x07;
 
-    public static final byte LI_TRACKPAD_EVENT_DOWN        = 0x00;
-    public static final byte LI_TRACKPAD_EVENT_UP          = 0x01;
-    public static final byte LI_TRACKPAD_EVENT_MOVE        = 0x02;
-    public static final byte LI_TRACKPAD_EVENT_CANCEL      = 0x03;
-    public static final byte LI_TRACKPAD_EVENT_BUTTON_ONLY = 0x04;
+    public static final byte LI_TRACKPAD_EVENT_FINGER_DOWN        = 0x00;
+    public static final byte LI_TRACKPAD_EVENT_FINGER_UP          = 0x01;
+    public static final byte LI_TRACKPAD_EVENT_FINGER_MOVE        = 0x02;
+    public static final byte LI_TRACKPAD_EVENT_BUTTON_DOWN      = 0x03;
+    public static final byte LI_TRACKPAD_EVENT_BUTTON_UP = 0x04;
     public static final byte LI_TRACKPAD_EVENT_CANCEL_ALL  = 0x05;
 
 
